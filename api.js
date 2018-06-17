@@ -32,12 +32,6 @@ router.post('/addTicket', (req, res) => {
 	let number = req.body.number
 	let name = req.body.name
 
-	/*if(tickets.validateTicket(number)){
-		tickets.addTicket({ number: number, name: name })
-		res.send({ message: 'added' })
-	} else {
-		res.send({ err: 'Invalid ticket number' })
-	}*/
 	tickets.addTicket({ number: number, name: name })
 		.then(() => res.send({ message: 'added' }))
 		.catch(msg => {
@@ -92,7 +86,7 @@ router.post('/login', (req, res) => {
 	if(user){
 		res.status(200).send({ err: false, user: { name: user.name, email: user.email, token: users.getToken(user.id, secret) } })
 	} else {
-		res.status(401).send({ err: true, message: 'user not found' })
+		res.status(401).send({ err: true, message: 'error while signing in' })
 	}
 })
 
@@ -103,10 +97,10 @@ router.post('/register', (req, res) => {
 		if(out.err){
 			res.status(200).send({ err: true, message: out.message })
 		} else {
-			res.status(200).send({ err: false, user: { name: data.name, email: data.email, token: users.getToken(user.id, secret) } })
+			res.status(200).send({ err: false, user: { name: data.name, email: data.email, token: users.getToken(out.id, secret) } })
 		}
 	} else {
-		res.status(200).send({ err: 'true', message: 'one or more fields are empty' })
+		res.status(200).send({ err: true, message: 'one or more fields are empty' })
 	}
 })
 

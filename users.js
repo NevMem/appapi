@@ -48,7 +48,9 @@ exports.checkAccess = function(token, secret){
 exports.registerUser = function(user){
 	let res = {}
 	res = validate(user)
-	if(!res.err)
+	if(!res.err){
 		data.push(user)
+		res.id = data.length - 1
+	}
 	return res
 }
