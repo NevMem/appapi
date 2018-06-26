@@ -3,7 +3,7 @@ const fs = require('fs'),
 let tickets = []
 let nextId = 0
 
-const maxCount = 23
+const maxCount = 10
 
 function load(){
 	tickets = JSON.parse(fs.readFileSync('tickets.json'), 'utf-8')
@@ -16,6 +16,8 @@ function load(){
 
 	if(tickets.length == 0)
 		runGenesis()
+
+	console.log('count of tickets:', tickets.length)
 }
 
 function addTicket(ticket){
@@ -26,7 +28,7 @@ function addTicket(ticket){
 			save()
 			resolve()
 		} else {
-			rejecte('Invalid ticket number')
+			reject('Invalid ticket number')
 		}
 	})
 }

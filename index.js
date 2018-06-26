@@ -11,6 +11,8 @@ let clients = new Set()
 io.on('connection', (socket) => {
 	clients.add(socket)
 
+	console.log('new connection')
+
 	for (client of clients){
 		client.emit('change online', { onlineUsers: clients.size })
 	}
@@ -23,6 +25,7 @@ io.on('connection', (socket) => {
 	})
 
 	socket.on('disconnect', () => {
+		console.log('connection closed')
 		clients.delete(socket)
 	})
 })
@@ -31,7 +34,7 @@ setInterval(() => {
 	for (client of clients){
 		client.emit('chat message', { name: 'Server', text: 'Debug message from server', time: Date.now() })
 	}
-}, 1000)
+}, 5000)
 
 app.use(bParser.json())
 
