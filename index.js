@@ -37,6 +37,7 @@ setInterval(() => {
 }, 5000)
 
 app.use(bParser.json())
+app.use(bParser.urlencoded({ extended: true }))
 
 app.use((req, res, next)=>{
 	console.log(req.url)

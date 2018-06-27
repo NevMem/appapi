@@ -1,33 +1,55 @@
 const fs = require('fs'), 
-	bcrypt = require('bcrypt')
-let tickets = []
-let nextId = 0
+	bcrypt = require('bcrypt'), 
+	mongodb = require('mongodb'), 
+	mongoose = require('mongoose')
+const MongoClient = mongodb.MongoClient
+var ObjectID = mongodb.ObjectID
 
-const maxCount = 10
+require('dotenv').config()
 
-function load(){
-	tickets = JSON.parse(fs.readFileSync('tickets.json'), 'utf-8')
-	for (let i = 0;i < tickets.length;i++){
-		let ID = parseInt(tickets[i].id)
-		if(!isNaN(ID))
-			nextId = Math.max(ID, nextId)
+const db_url = process.env.db_url.replace('<dbuser>', process.env.user).replace('<dbpassword>', process.env.password)
+
+var db = undefined
+var ticketsCollection = undefined
+
+MongoClient.connect(db_url, (err, client) => {
+	if(err) console.log(err)
+	else {
+		console.log('connected to database')
+		var maindb = client.db('maindb')
+		ticketsCollection = maindb.collection('tickets')
+		console.log('switched to tickets collection')
+
+		ticketsCollection.find({ owner: 'NevMem' }).toArray((err, res) => {
+			if(err) console.log(err)
+			else{
+				console.log(res)
+			}
+		})
 	}
-	nextId += 1
-
-	if(tickets.length == 0)
-		runGenesis()
-
-	console.log('count of tickets:', tickets.length)
-}
+})
 
 function addTicket(ticket){
 	return new Promise((resolve, reject) => {
 		if(validateTicket(ticket.number)){
-			tickets.push({ id: nextId, name: ticket.name, number: ticket.number })
-			nextId += 1
-			save()
-			resolve()
+			if(ticketsCollection != undefined){
+				console.log('trying to add to databse'.cyan)
+				ticketsCollection.insert({ owner: ticket.name, number: ticket.number, time: Date.now() }, ( err, res ) => {
+					if(err){
+						console.log('error ocured'.red)
+						console.log(err)
+						reject(err)
+					} else {
+						console.log('added'.green)
+						console.log(res)
+						resolve()
+					}
+				})
+			} else {
+				reject('Database unreachable'.red)
+			}
 		} else {
+			console.log('Invalid ticket number'.yellow)
 			reject('Invalid ticket number')
 		}
 	})
@@ -42,12 +64,6 @@ function runGenesis(){
 	}
 }
 
-function save(){
-	fs.writeFileSync('tickets.json', JSON.stringify(tickets), 'utf-8')
-}
-
-load()
-
 function validateTicket(number){
     if(number.length !== 6)
 		return false
@@ -57,28 +73,6 @@ function validateTicket(number){
     return true
 }
 
-exports.getLast = function(id){
-	let toSend = []
-	if(id == -1){
-		/*for (let i = 0;i < Math.min(tickets.length, maxCount);i++){
-			toSend.push(tickets[i])
-		}*/
-		for(let i = Math.max(0, tickets.length - maxCount); i < tickets.length;i++){
-			toSend.push(tickets[i])
-		}
-	} else {
-		let pos = -1
-		for(let i = 0;i < tickets.length;i++){
-			if(tickets[i].id == id)
-				pos = i + 1
-		}
-		if(pos != -1){
-			for (let i = pos;i <= Math.min(tickets.length - 1, pos + maxCount - 1);i++)
-				toSend.push(tickets[i])
-		}
-	}
-	return toSend
-}
 exports.addTicket = addTicket
 exports.changeTicketNumber = function(id, number, userName){
 	return new Promise((resolve, reject) => {
@@ -86,36 +80,50 @@ exports.changeTicketNumber = function(id, number, userName){
 			reject('Invalid ticket number')
 			return
 		}
-		for(let i = 0;i < tickets.length;i++){
-			if(tickets[i].id === id){
-				if(tickets[i].name !== userName){
-					reject('You are not ticket owner')
-					return
+		if (ticketsCollection) {
+			ticketsCollection.update({ '_id': new ObjectID(id) }, {$set: { owner: userName, number: number }}, (err, res) => {
+				if(err){
+					console.log('rejecting'.red)
+					reject(err)
+				} else {
+					console.log('resolving'.green)
+					resolve()
 				}
-
-				tickets[i].number = number
-				save()
-				resolve()
-				return
-			}
+			})
+		} else {
+			reject('Database unreachable'.red)
 		}
-		reject('Ticket not found')
 	})
 }
 exports.deleteTicket = function(id, userName){
 	return new Promise((resolve, reject) => {
-		let upd = []
-		for (let i = 0;i < tickets.length;i++){
-			if(tickets[i].id == id && tickets[i].name !== userName){
-				reject('You are not ticket owner')
-				return
-			}
-			if(tickets[i].id != id)
-				upd.push(tickets[i])
+		if(ticketsCollection){
+			console.log('Requesting to database'.cyan)
+			ticketsCollection.remove({ _id: new ObjectID(id) }, (err, res) => {
+				if(err){
+					reject(err)
+				} else {
+					resolve()
+				}
+			})
+		} else {
+			console.log('Database unreachable'.red)
 		}
-		tickets = upd
-		save()	
-		resolve()
+	})
+}
+exports.getTickets = (startTime) => {
+	return new Promise((resolve, reject) => {
+		if(ticketsCollection){
+			ticketsCollection.find({ time: { $gt: startTime }}).toArray((err, res) => {
+				if(err){
+					reject(err)
+				} else {
+					resolve(res)
+				}
+			})
+		} else {
+			reject('Database unreachable'.red)
+		}
 	})
 }
 exports.validateTicket = validateTicket

@@ -24,7 +24,9 @@ router.use((req, res, next) => {
 })
 
 router.post('/tickets', (req, res) => {
-	res.send(tickets.getLast(req.body.lastId))
+	tickets.getTickets(parseInt(req.body.startTime)).then(data => res.send(data)).catch(err => {
+		res.send(err)
+	})
 })
 
 router.post('/addTicket', (req, res) => {
@@ -35,7 +37,6 @@ router.post('/addTicket', (req, res) => {
 	tickets.addTicket({ number: number, name: name })
 		.then(() => res.send({ message: 'added' }))
 		.catch(msg => {
-			console.log(msg)
 			res.send({ err: msg })
 		})
 })
@@ -71,6 +72,7 @@ router.post('/changeTicketNumber', (req, res) => {
 		tickets.changeTicketNumber(id, number, access.userName)
 			.then(() => res.send({}))
 			.catch(err => {
+				console.log('error', err)
 				res.send({ err: err })
 			})
 	} else {
